@@ -20,10 +20,11 @@ jest
   .mock('fs');
 
 var Promise = require('promise');
-var Cache = require('../');
 var fs = require('fs');
 var os = require('os');
 var _ = require('underscore');
+
+var Cache = require('../');
 
 describe('JSTransformer Cache', () => {
   beforeEach(() => {

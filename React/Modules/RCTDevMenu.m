@@ -26,7 +26,7 @@
 @interface RCTBridge (Profiling)
 
 - (void)startProfiling;
-- (void)stopProfiling;
+- (void)stopProfiling:(void (^)(NSData *))callback;
 
 @end
 
@@ -407,11 +407,8 @@ RCT_EXPORT_MODULE()
   Class chromeExecutorClass = NSClassFromString(@"RCTWebSocketExecutor");
   if (!chromeExecutorClass) {
     [items addObject:[RCTDevMenuItem buttonItemWithTitle:@"Chrome Debugger Unavailable" handler:^{
-      [[[UIAlertView alloc] initWithTitle:@"Chrome Debugger Unavailable"
-                                  message:@"You need to include the RCTWebSocket library to enable Chrome debugging"
-                                 delegate:nil
-                        cancelButtonTitle:@"OK"
-                        otherButtonTitles:nil] show];
+      UIAlertView *alert = RCTAlertView(@"Chrome Debugger Unavailable", @"You need to include the RCTWebSocket library to enable Chrome debugging", nil, @"OK", nil);
+      [alert show];
     }]];
   } else {
     BOOL isDebuggingInChrome = _executorClass && _executorClass == chromeExecutorClass;
@@ -447,7 +444,7 @@ RCT_EXPORT_MODULE()
 
 RCT_EXPORT_METHOD(show)
 {
-  if (_actionSheet || !_bridge) {
+  if (_actionSheet || !_bridge || RCTRunningInAppExtension()) {
     return;
   }
 
@@ -474,7 +471,7 @@ RCT_EXPORT_METHOD(show)
   actionSheet.cancelButtonIndex = actionSheet.numberOfButtons - 1;
 
   actionSheet.actionSheetStyle = UIBarStyleBlack;
-  [actionSheet showInView:[UIApplication sharedApplication].keyWindow.rootViewController.view];
+  [actionSheet showInView:RCTSharedApplication().keyWindow.rootViewController.view];
   _actionSheet = actionSheet;
   _presentedItems = items;
 }
@@ -523,7 +520,9 @@ RCT_EXPORT_METHOD(reload)
     if (enabled) {
       [_bridge startProfiling];
     } else {
-      [_bridge stopProfiling];
+      [_bridge stopProfiling:^(NSData *logData) {
+        RCTProfileSendResult(_bridge, @"systrace", logData);
+      }];
     }
   }
 }
@@ -624,7 +623,11 @@ RCT_EXPORT_METHOD(reload)
 
 - (RCTDevMenu *)devMenu
 {
+#if RCT_DEV
   return self.modules[RCTBridgeModuleNameForClass([RCTDevMenu class])];
+#else
+  return nil;
+#endif
 }
 
 @end
